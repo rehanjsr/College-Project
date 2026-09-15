@@ -1,0 +1,26 @@
+Transaction_ID,Date,Category,Description,Amount,Payment_Method,Account_Type
+TXN1001,2026-05-01,Housing,Monthly Rent,1200.00,Bank Transfer,Checking
+TXN1002,2026-05-02,Groceries,Supermarket Spend,145.20,Debit Card,Checking
+TXN1003,2026-05-03,Utilities,Electric Bill,85.50,Auto-Pay,Checking
+TXN1004,2026-05-04,Entertainment,Netflix Subscription,15.99,Credit Card,Rewards Visa
+TXN1005,2026-05-05,Food & Dining,Local Restaurant,64.30,Credit Card,Rewards Visa
+TXN1006,2026-05-08,Transportation,Gas Station,45.00,Debit Card,Checking
+TXN1007,2026-05-12,Groceries,Organic Market,92.15,Debit Card,Checking
+TXN1008,2026-05-15,Healthcare,Pharmacy Prescription,30.00,Credit Card,Rewards Visa
+TXN1009,2026-05-18,Shopping,Online Clothing Store,110.00,Credit Card,Rewards Visa
+TXN1010,2026-05-20,Food & Dining,Coffee Shop,6.75,Cash,None
+TXN1011,2026-06-01,Housing,Monthly Rent,1200.00,Bank Transfer,Checking
+TXN1012,2026-06-02,Groceries,Supermarket Spend,138.40,Debit Card,Checking
+TXN1013,2026-06-03,Utilities,Water Bill,42.00,Auto-Pay,Checking
+TXN1014,2026-06-04,Entertainment,Movie Tickets,32.00,Credit Card,Rewards Visa
+TXN1015,2026-06-07,Transportation,Train Pass,75.00,Debit Card,Checking
+TXN1016,2026-06-10,Food & Dining,Pizza Delivery,28.50,Credit Card,Rewards Visa
+TXN1017,2026-06-11,Shopping,Electronics Accessory,49.99,Credit Card,Rewards Visa
+TXN1018,2026-06-12,Healthcare,Dental Checkup,85.00,Debit Card,Checking
+TXN1019,2026-06-14,Entertainment,Concert Ticket,120.00,Credit Card,Rewards Visa
+TXN1020,2026-06-16,Groceries,Weekly Groceries,156.80,Debit Card,Checking
+TXN1021,2026-06-18,Transportation,Rideshare,18.75,Credit Card,Rewards Visa
+TXN1022,2026-06-19,Utilities,Internet Bill,65.00,Auto-Pay,Checking
+TXN1023,2026-06-20,Food & Dining,Sushi Restaurant,72.40,Credit Card,Rewards Visa
+TXN1024,2026-06-22,Shopping,Bookstore,24.95,Debit Card,Checking
+TXN1025,2026-06-23,Entertainment,Video Game Purchase,59.99,Credit Card,Rewards Visa

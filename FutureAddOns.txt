@@ -1,0 +1,8 @@
+Feature	                                    Why it matters
+
+1. Highest category each month	            Core financial insight; you've already chosen this
+2. Month-over-month spending change	        Shows whether spending is increasing/decreasing
+3. Highest individual transaction	        Identifies unusually expensive purchases
+4. Average daily spending	                More meaningful than average transaction amount
+5. Budget vs actual spending            	Foundation for future budgeting advice
+6. Category spending change                	Shows which categories are driving increases
