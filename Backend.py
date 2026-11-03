@@ -1,13 +1,17 @@
 
+import matplotlib
+matplotlib.use("Agg")
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import psycopg2 as pg
 from DbCredentials import database_credentials
+from sklearn.ensemble import IsolationForest
 import json
 import os
 from dotenv import load_dotenv
 from google import genai
+from io import BytesIO
 
 
 load_dotenv()
@@ -17,65 +21,163 @@ client = genai.Client(
 )
 
 
+def load_user_data(username):
+    try:
+        conn = pg.connect(**database_credentials)
+        cursor = conn.cursor()
 
-try:
-    conn = pg.connect(**database_credentials)
-    cursor = conn.cursor()
+    except Exception as error:
+        print("Error: ", error)
 
-except Exception as error:
-    print("Error: ", error)
+    data = pd.read_sql(
+        'SELECT * FROM Transactions WHERE Username = %(user)s',
+        conn,
+        params={"user": username},
+        parse_dates=['Date'],
+        index_col=['transaction_id']
+    )
 
-data = pd.read_sql(
-    'SELECT * FROM Transactions',
-    conn,
-    parse_dates=['Date'],
-    index_col=['Transaction_ID']
-)
+    cursor.close()
+    conn.close()
 
-
-start_date = data['Date'].min()
-end_date = data['Date'].max()
-
-
-
-def categorical_purchases():
-    value = data['Category'].value_counts()
-    plt.pie(value, labels=value.index, autopct='%1.1f%%')
-    plt.show()
+    return data
 
 
-def categorical_expense():
-    group = data.groupby('Category')
-    value = group['Amount'].sum()
-    plt.pie(value, labels=value.index, autopct='%1.1f%%')
-    plt.show()
+
+def categorical_expense(data):
+    buffer = BytesIO()
+
+    values = data.groupby('Category')['Amount'].sum()
+    values = values[values > 0].sort_values(ascending=False)
+
+    if values.empty:
+        return buffer
+
+    fig, ax = plt.subplots(figsize=(7, 5.5), dpi=140)
+    fig.patch.set_facecolor('#ffffff')
+    ax.set_facecolor('#ffffff')
+
+    wedges, texts, autotexts = ax.pie(
+        values,
+        labels=None,
+        autopct='%1.1f%%',
+        startangle=90,
+        pctdistance=0.7,
+        wedgeprops={
+            'width': 0.42,
+            'edgecolor': '#ffffff',
+            'linewidth': 2
+        },
+        textprops={'fontsize': 10}
+    )
+
+    for text in autotexts:
+        text.set_color('#30265c')
+        text.set_fontweight('bold')
+        text.set_fontsize(9)
+
+    ax.legend(
+        wedges,
+        [f'{category}  (₹{amount:,.0f})'
+         for category, amount in values.items()],
+        title='Categories',
+        loc='center left',
+        bbox_to_anchor=(0.98, 0.5),
+        frameon=False,
+        fontsize=9,
+        title_fontsize=10
+    )
+
+    ax.set_title(
+        'Where Your Money Goes',
+        fontsize=15,
+        fontweight='bold',
+        color='#30265c',
+        pad=18
+    )
+
+    ax.axis('equal')
+    fig.tight_layout()
+
+    fig.savefig(
+        buffer,
+        format='png',
+        dpi=160,
+        bbox_inches='tight',
+        facecolor='white'
+    )
+
+    plt.close(fig)
+    buffer.seek(0)
+
+    return buffer
+
+     
+
+def expense_trend(data):
+    buffer = BytesIO()
+
+    data2 = data[['Date', 'Category', 'Amount']].copy()
+    data2['Date'] = pd.to_datetime(data2['Date']).dt.normalize()
+
+    grouped = (
+        data2.groupby(['Date', 'Category'])['Amount']
+        .sum()
+        .unstack(fill_value=0)
+        .sort_index()
+    )
+
+    if grouped.empty:
+        return buffer
+
+    date_range = pd.date_range(
+        start=grouped.index.min(),
+        end=grouped.index.max(),
+        freq='D'
+    )
+    grouped = grouped.reindex(date_range, fill_value=0)
+
+    fig, ax = plt.subplots(figsize=(10, 5), dpi=120)
+    fig.patch.set_facecolor('#ffffff')
+    ax.set_facecolor('#ffffff')
+
+    for category in grouped.columns:
+        ax.plot(
+            grouped.index,
+            grouped[category],
+            marker='o',
+            markersize=3,
+            linewidth=2,
+            label=str(category)
+        )
+
+    ax.set_title('Expense Trend by Category', fontsize=15, pad=18)
+    ax.set_xlabel('Date', fontsize=10)
+    ax.set_ylabel('Amount (₹)', fontsize=10)
+
+    ax.grid(axis='y', linestyle='--', alpha=0.25)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+
+    ax.legend(frameon=False, loc='best')
+    fig.autofmt_xdate(rotation=30)
+    fig.tight_layout()
+
+    fig.savefig(
+        buffer,
+        format='png',
+        dpi=150,
+        bbox_inches='tight',
+        facecolor=fig.get_facecolor()
+    )
+
+    plt.close(fig)
+    buffer.seek(0)
+
+    return buffer
 
 
-def expense_trend():
-    data2 = data.copy(deep=True)
-    data2 = data2.groupby(['Category', 'Date'])['Amount'].sum()
-
-    date_range = pd.date_range(start_date, end_date)
-
-    data2 = data2.unstack(level=0)
-    data2 = data2.reindex(date_range)
-    data2 = data2.fillna(0)
-
-    categories = list(data2.columns)
-    index = data2.index
-
-    for i in categories:
-        plt.plot(index, data2[i], marker='o', label=i)
-
-    plt.xlabel("Date")
-    plt.ylabel("Amount")
-    plt.title("Expense Trend by Category")
-    plt.xticks(rotation=45)
-    plt.legend()
-    plt.show()
-
-
-def expense_summary():
+def expense_summary(data):
     total_spent = data['Amount'].sum()
     categorical_spending = data.groupby('Category')['Amount'].sum()
     average_transaction = data['Amount'].mean()
@@ -87,7 +189,7 @@ def expense_summary():
     }
 
 
-def monthly_spending():
+def monthly_spending(data):
     data2 = data.copy(deep=True)
 
     total_monthly = (
@@ -109,7 +211,7 @@ def monthly_spending():
     }
 
 
-def highest_category_spending_per_month():
+def highest_category_spending_per_month(data):
     data2 = data.copy(deep=True)
     data2['Month'] = data2['Date'].dt.to_period('M')
 
@@ -120,9 +222,9 @@ def highest_category_spending_per_month():
         'highest_category_total': data2
     }
 
-def spending_data():
-    summary = expense_summary()
-    monthly = monthly_spending()
+def spending_data(data):
+    summary = expense_summary(data)
+    monthly = monthly_spending(data)
 
     category = summary["category"].index
     spending = summary["category"].values
@@ -146,9 +248,9 @@ def spending_data():
     return json_report
 
 
-def ai_financial_summary():
+def ai_financial_summary(data):
 
-    json_report = spending_data()
+    json_report = spending_data(data)
    
     prompt = f"""
 You are a personal finance analyst. Generate a clear, concise
@@ -209,9 +311,9 @@ Rules:
     return response.text
 
 
-def ai_budgeting():
+def ai_budgeting(data):
 
-    json_report = spending_data()
+    json_report = spending_data(data)
 
     prompt = f"""
 You are a personal budgeting assistant. Use the financial report
@@ -277,17 +379,117 @@ Rules:
     return response.text
 
 
+def ano_detect(category_data):
+    category_data = category_data.copy()
+    amount = pd.DataFrame(category_data['Amount'])
+    model = IsolationForest(contamination = 0.01)
+    category_data['Type'] = model.fit_predict(amount)
+    category_data = category_data[(category_data['Type'] == -1) & (category_data['user_anomaly_override'] != 0)]
+    return category_data
+
+
+
+def anomaly_detection(data):
+    threshold = 5
+    df = data.copy(deep=True)
+    category_size = df.groupby(["Category"]).size()
+    anomalies = {}
+    for col,value in category_size.items():
+        if value >= threshold:
+            category_data = df[df["Category"] == col]
+            result = ano_detect(category_data)
+            anomalies[col] = result
+        else:
+            anomalies[col] = f'No Data Available for Category {col}, Minimum Threshold Required'
+
+    return anomalies
+
+
+def override_anomaly(details):
+    try:
+        conn = pg.connect(**database_credentials)
+        cursor = conn.cursor()
+        query = 'Update transactions set user_anomaly_override = %(override)s where transaction_id = %(transaction_id)s'
+        cursor.execute(query,details)
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return True
+
+    except Exception as error:
+        print("Error: ", error) 
+        cursor.close()
+        conn.close()
+        return False
+
+
+
+def add_transactions(trans_data):
+    try:
+        conn = pg.connect(**database_credentials)
+        cursor = conn.cursor()
+
+    except Exception as error:
+        print("Error: ", error)
+
+    query = '''insert into Transactions (username,"Date","Category","Description","Amount","Payment_Method","Account_Type") 
+    values ( %(username)s, %(date)s, %(category)s, %(description)s, %(amount)s, %(payment_method)s, %(account_type)s ) '''
+
+    cursor.execute(query,trans_data)
+
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+
+def sign_up(credentials):
+    try:
+        conn = pg.connect(**database_credentials)
+        cursor = conn.cursor()
+        query = 'insert into users (username,password) values (%(username)s, %(password)s)'
+        cursor.execute(query,credentials)
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return True
+
+    except Exception as error:
+        print("Error: ", error)
+        cursor.close()
+        conn.close()
+        return False
+
+def log_in(credentials):
+    try:
+        conn = pg.connect(**database_credentials)
+        cursor = conn.cursor()
+        query = 'select * from users where username = %(username)s'
+        cursor.execute(query,credentials)
+        result = cursor.fetchone()
+        cursor.close()
+        conn.close()
+        if result:
+            if result[1] == credentials['password']:
+                return True
+            else:
+                return False
+            
+        else:
+            return False
+
+    except Exception as error:
+        print("Error: ", error)
+        cursor.close()
+        conn.close()
+        return False
+
+
+
 if __name__ == "__main__":
-    summary = ai_financial_summary()
-    advice = ai_budgeting()
-
-    print(summary)
-    print(advice)
+    my_data = load_user_data('0')
 
 
-# cursor.close()
-# conn.close()
 
 
-df = data.groupby(["Category"])
-print(data.head())
+
+

@@ -1,0 +1,47 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }} | FinAssist</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+    <header class="header">
+        <div>
+            <h1>FinAssist</h1>
+            <p>Your Personal Financial Assistant</p>
+        </div>
+        <a href="/" style="color: #6558d9; text-decoration: none;">
+            ← Dashboard
+        </a>
+    </header>
+
+    <main class="container">
+        <section class="welcome">
+            <p class="eyebrow">AI FINANCIAL REPORT</p>
+            <h2>{{ title }}</h2>
+            <p>Generated using your available transaction history.</p>
+        </section>
+
+        <section class="panel">
+            {% if error %}
+                <h2>Something went wrong</h2>
+                <p>{{ error }}</p>
+            {% elif result %}
+                <h2>Analysis</h2>
+                <div>{{ result | safe }}</div>
+            {% else %}
+                <p>No report is available.</p>
+            {% endif %}
+        </section>
+
+        <a href="/" style="color: #6558d9; text-decoration: none;">
+            ← Return to dashboard
+        </a>
+    </main>
+
+</body>
+</html>

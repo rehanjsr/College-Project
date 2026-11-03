@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personal Financial Assistant</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+    <header class="header">
+        <div>
+            <h1>FinAssist</h1>
+            <p>Your Personal Financial Assistant</p>
+        </div>
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <span class="status">Dashboard</span>
+            <a href="{{ url_for('logout') }}" style="color: #ff4d4d; text-decoration: none; font-weight: bold;">Logout</a>
+        </div>
+    </header>
+
+    <main class="container">
+
+        <section class="welcome">
+            <p class="eyebrow">YOUR FINANCES AT A GLANCE</p>
+            <h2>Understand your spending.</h2>
+            <p>Explore your transactions and get insights powered by AI.</p>
+        </section>
+
+        <section class="stats">
+            <article class="card">
+                <p class="label">Total Spending</p>
+                <h2>₹{{ "%.2f"|format(total_spent) }}</h2>
+            </article>
+
+            <article class="card">
+                <p class="label">Average Transaction</p>
+                <h2>₹{{ "%.2f"|format(average_transaction) }}</h2>
+            </article>
+
+            <article class="card">
+                <p class="label">Spending Categories</p>
+                <h2>{{ category_spending|length }}</h2>
+            </article>
+        </section>
+
+        <section class="panel">
+            <h2>Spending by Category</h2>
+            <p class="muted">Your recorded spending, grouped by category.</p>
+
+            {% if category_spending %}
+                <div class="category-list">
+                    {% for category, amount in category_spending.items() %}
+                        <div class="category-row">
+                            <div class="category-info">
+                                <span>{{ category }}</span>
+                                <strong>₹{{ "%.2f"|format(amount) }}</strong>
+                            </div>
+
+                            <div class="bar-background">
+                                {% if total_spent > 0 %}
+                                    <div class="bar"
+                                         style="width: {{ (amount / total_spent * 100)|round(1) }}%">
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            <small>
+                                {% if total_spent > 0 %}
+                                    {{ "%.1f"|format(amount / total_spent * 100) }}% of total
+                                {% else %}
+                                    No spending recorded
+                                {% endif %}
+                            </small>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <div class="category-chart-card">
+                    <h3>Category Spending Distribution</h3>
+                    <p class="muted">
+                        See how your expenses are distributed across categories.
+                    </p>
+
+                    <img
+                        src="{{ url_for('category_expenses_chart') }}"
+                        alt="Doughnut chart showing total expenses by category"
+                        class="chart-image"
+                    >
+                </div>
+            {% else %}
+                <p>No spending data is available yet.</p>
+            {% endif %}
+        </section>
+
+        <section class="panel">
+            <h2>Monthly Spending</h2>
+            <p class="muted">Total amount recorded in each month.</p>
+
+            {% if monthly_spending %}
+                <div class="category-list">
+                    {% for month, amount in monthly_spending.items() %}
+                        <div class="category-row">
+                            <div class="category-info">
+                                <span>{{ month }}</span>
+                                <strong>₹{{ "%.2f"|format(amount) }}</strong>
+                            </div>
+
+                            <div class="bar-background">
+                                {% if amount > 0 %}
+                                    {% set max_amount = monthly_spending.values()|max %}
+                                    <div class="bar"
+                                         style="width: {{ (amount / max_amount * 100)|round(1) }}%">
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p>No monthly spending data is available yet.</p>
+            {% endif %}
+        </section>
+
+        <section class="panel">
+            <h2>Spending Trends</h2>
+            <p class="muted">
+                Track how your daily spending changes across categories.
+            </p>
+            {% if total_spent > 0 %}
+                <div class="chart-container">
+                    <img
+                        src="{{ url_for('expense_trend_chart') }}"
+                        alt="Line chart showing expense trends by category"
+                        class="chart-image"
+                    >
+                </div>
+            {% else %}
+                <p>No spending trend data is available yet.</p>
+            {% endif %}
+        </section>
+        </section>
+
+        <section class="panel">
+            <h2>AI Financial Assistant</h2>
+            <p class="muted">
+                Use your transaction history to generate financial insights.
+            </p>
+
+            <div class="feature-grid">
+                <article class="feature">
+                    <h3>AI Spending Summary</h3>
+                    <p>Review monthly changes, category rankings, and spending patterns.</p>
+                    <form action="{{ url_for('report', report_type='summary') }}"
+                          method="POST">
+                        <button type="submit">Generate Summary</button>
+                    </form>
+                </article>
+
+                <article class="feature">
+                    <h3>AI Budget Recommendations</h3>
+                    <p>Get provisional monthly budget suggestions based on historical spending.</p>
+                    <form action="{{ url_for('report', report_type='budget') }}"
+                          method="POST">
+                        <button type="submit">Get Budget Advice</button>
+                    </form>
+                </article>
+
+                <article class="feature">
+                    <h3>Anomaly Detection</h3>
+                    <p>Identify potentially unusual transactions using machine learning.</p>
+                    <p class="coming-soon">Backend integration pending</p>
+                </article>
+
+                <section class="panel">
+
+            <h2>Add New Transaction</h2>
+            <p class="muted">Record a new expense manually.</p>
+            
+            <form action="{{ url_for('submit_transaction') }}" method="POST" style="display: flex; flex-direction: column; gap: 10px; max-width: 400px; margin-top: 15px;">
+                <input type="date" name="date" required>
+                <select name="category" required>
+                    <option value="" disabled selected>Select a Category</option>
+                    <option value="Food & Dining">Food & Dining</option>
+                    <option value="Groceries">Groceries</option>
+                    <option value="Transportation">Transportation</option>
+                    <option value="Utilities">Utilities</option>
+                    <option value="Shopping">Shopping</option>
+                    <option value="Entertainment">Entertainment</option>
+                    <option value="Healthcare">Healthcare</option>
+                    <option value="Housing">Housing</option>
+                    <option value="Education">Education</option>
+                    <option value="Other">Other</option>
+                </select>                    
+                <input type="text" name="description" placeholder="Description" required>
+                <input type="number" step="0.01" name="amount" placeholder="Amount (₹)" required>
+                
+                <select name="payment_method" required>
+                    <option value="" disabled selected>Payment Method</option>
+                    <option value="Cash">Cash</option>
+                    <option value="Credit Card">Credit Card</option>
+                    <option value="Debit Card">Debit Card</option>
+                    <option value="Bank Transfer">Bank Transfer</option>
+                </select>
+                
+                <select name="account_type" required>
+                    <option value="" disabled selected>Account Type</option>
+                    <option value="Checking">Checking</option>
+                    <option value="Rewards Visa">Rewards Visa</option>
+                    <option value="None">None</option>
+                </select>
+                
+                <button type="submit" style="margin-top: 10px;">Add Transaction</button>
+            </form>
+        </section>
+
+                <article class="feature">
+                    <h3>Spending Prediction</h3>
+                    <p>Estimate future spending using historical transaction data.</p>
+                    <p class="coming-soon">Backend integration pending</p>
+                </article>
+            </div>
+        </section>
+
+        <footer>
+            <p>FinAssist · Personal Financial Assistant</p>
+            <small>AI outputs are estimates based on available transaction data.</small>
+        </footer>
+
+    </main>
+
+</body>
+</html>
