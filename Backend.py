@@ -1,5 +1,7 @@
 
 import matplotlib
+from datetime import datetime, date
+import base64
 matplotlib.use("Agg")
 import pandas as pd
 import numpy as np
@@ -7,6 +9,7 @@ import matplotlib.pyplot as plt
 import psycopg2 as pg
 from DbCredentials import database_credentials
 from sklearn.ensemble import IsolationForest
+from sklearn.linear_model import LinearRegression
 import json
 import os
 from dotenv import load_dotenv
@@ -112,7 +115,14 @@ def categorical_expense(data):
 
     return buffer
 
-     
+
+def monthly_history(data):
+    df = data.copy(deep = True)
+    df = df.set_index("Date")
+    df = df.groupby([pd.Grouper(freq = "MS"),"Category"])["Amount"].sum()
+    df = df.unstack(level = 1)
+    df.index = df.index.strftime('%Y-%m')
+    return df.to_dict(orient = 'index')
 
 def expense_trend(data):
     buffer = BytesIO()
@@ -384,8 +394,9 @@ def ano_detect(category_data):
     amount = pd.DataFrame(category_data['Amount'])
     model = IsolationForest(contamination = 0.01)
     category_data['Type'] = model.fit_predict(amount)
-    category_data = category_data[(category_data['Type'] == -1) & (category_data['user_anomaly_override'] != 0)]
-    return category_data
+    category_data = category_data[(category_data['Type'] == -1) & (category_data['user_anomaly_override'] != False)]
+    category_data = category_data[['Date', 'Category', 'Description', 'Amount']]
+    return category_data.to_dict(orient='index')
 
 
 
@@ -398,9 +409,7 @@ def anomaly_detection(data):
         if value >= threshold:
             category_data = df[df["Category"] == col]
             result = ano_detect(category_data)
-            anomalies[col] = result
-        else:
-            anomalies[col] = f'No Data Available for Category {col}, Minimum Threshold Required'
+            anomalies.update(result)
 
     return anomalies
 
@@ -409,7 +418,7 @@ def override_anomaly(details):
     try:
         conn = pg.connect(**database_credentials)
         cursor = conn.cursor()
-        query = 'Update transactions set user_anomaly_override = %(override)s where transaction_id = %(transaction_id)s'
+        query = 'Update transactions set user_anomaly_override = %(override)s where transaction_id = %(transaction_id)s AND username = %(username)s'
         cursor.execute(query,details)
         conn.commit()
         cursor.close()
@@ -481,6 +490,136 @@ def log_in(credentials):
         print("Error: ", error)
         cursor.close()
         conn.close()
+        return False
+
+
+def get_recent_transactions(data, limit=None):
+    if data.empty:
+        return []
+    df = data.copy()
+    df = df.reset_index()
+    df = df.sort_values(by='Date', ascending=False)
+    df['Month_Str'] = df['Date'].dt.strftime('%Y-%m')
+    df = df[['transaction_id', 'Month_Str', 'Date', 'Category', 'Description', 'Amount', 'Payment_Method', 'Account_Type']]
+    df['Date'] = df['Date'].dt.strftime('%Y-%m-%d')
+    if limit:
+        df = df.head(limit)
+    return df.to_dict(orient='records')
+
+
+def delete_transaction(details):
+    tx_date = datetime.strptime(details['date'], '%Y-%m-%d').date()
+    if tx_date > date.today():
+        return False
+
+    try:
+        conn = pg.connect(**database_credentials)
+        cursor = conn.cursor()
+        query = 'delete from transactions where username = %(username)s and transaction_id = %(transaction_id)s'
+        cursor.execute(query,details)
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return True
+
+    except Exception as error:
+        print("Error: ", error)
+        cursor.close()
+        conn.close()
+        return False
+
+
+def update_transaction(details):
+    tx_date = datetime.strptime(details['date'], '%Y-%m-%d').date()
+    if tx_date > date.today():
+        return False
+    try:
+        conn = pg.connect(**database_credentials)
+        cursor = conn.cursor()
+        query = '''
+        UPDATE transactions SET 
+        "Date" = %(date)s, 
+        "Category" = %(category)s, 
+        "Description" = %(description)s, 
+        "Amount" = %(amount)s, 
+        "Payment_Method" = %(payment_method)s, 
+        "Account_Type" = %(account_type)s 
+        WHERE transaction_id = %(transaction_id)s AND username = %(username)s'''        
+        cursor.execute(query,details)
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return True
+
+    except Exception as error:
+        print("Error: ", error)
+        cursor.close()
+        conn.close()
+        return False
+
+
+def predict_spending(data):
+    if data.empty:
+        return False
+
+    buffer = BytesIO()
+    df = data.copy(deep=True)
+    df = df.set_index("Date")
+
+    monthly_totals = df.resample("MS")["Amount"].sum()
+    y = monthly_totals.values
+    
+    if len(y) > 3:
+        X = np.arange(1, len(y) + 1).reshape(-1, 1)
+        next_month = np.array([[len(y) + 1]])
+        month_labels = monthly_totals.index.strftime('%Y-%m').tolist()
+
+        model = LinearRegression()
+        model.fit(X, y)
+        
+        raw_prediction = model.predict(next_month)[0]
+        clean_prediction = max(0.0, round(float(raw_prediction), 2))
+
+        plt.figure(figsize=(8, 4.2), dpi=100)
+        ax = plt.gca()
+        ax.set_facecolor('#f8f9fa')
+        
+        all_X = np.vstack([X, next_month])
+        trendline_y = np.maximum(0, model.predict(all_X))
+        plt.plot(all_X, trendline_y, color='#6558d9', linestyle='--', alpha=0.5, linewidth=2, label='Spending Trend')
+
+        plt.scatter(X, y, color='#6558d9', s=75, zorder=4, label='Actual Monthly Spending')
+
+        plt.scatter(next_month, [clean_prediction], color='#d9534f', s=110, zorder=5, edgecolors='black', linewidth=1.2, label='Next Month Forecast')
+
+        all_labels = month_labels + ['Next Month']
+        plt.xticks(all_X.flatten(), all_labels, rotation=30, fontsize=9, color='#333333')
+        plt.yticks(fontsize=9, color='#333333')
+
+        plt.title('Monthly Spending Trajectory & Forecast', fontsize=12, fontweight='bold', color='#333333', pad=12)
+        plt.ylabel('Total Spending (₹)', fontsize=10, fontweight='bold', color='#555555')
+        plt.grid(True, linestyle=':', alpha=0.6, color='#cccccc', zorder=0)
+        
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.spines['left'].set_color('#cccccc')
+        ax.spines['bottom'].set_color('#cccccc')
+        
+        plt.legend(frameon=True, facecolor='white', edgecolor='#e0e0e0', fontsize=9)
+        plt.tight_layout()
+
+        plt.savefig(buffer, format='png')
+        plt.close()
+        buffer.seek(0)
+        graph_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
+
+        result = {}
+        result['Prediction'] = clean_prediction
+        result['Graph'] = graph_base64
+
+        return result
+
+    else:
         return False
 
 

@@ -44,6 +44,7 @@
             </article>
         </section>
 
+        <!-- 1. Spending by Category -->
         <section class="panel">
             <h2>Spending by Category</h2>
             <p class="muted">Your recorded spending, grouped by category.</p>
@@ -93,35 +94,201 @@
             {% endif %}
         </section>
 
+        <!-- 2. Recent Transactions -->
         <section class="panel">
-            <h2>Monthly Spending</h2>
-            <p class="muted">Total amount recorded in each month.</p>
+            <div style="margin-bottom: 15px;">
+                <h2 style="margin-bottom: 4px;">Recent Transactions</h2>
+                <p class="muted" style="margin: 0;">Your 10 most recent expenses</p>
+            </div>
 
-            {% if monthly_spending %}
-                <div class="category-list">
-                    {% for month, amount in monthly_spending.items() %}
-                        <div class="category-row">
-                            <div class="category-info">
-                                <span>{{ month }}</span>
-                                <strong>₹{{ "%.2f"|format(amount) }}</strong>
-                            </div>
-
-                            <div class="bar-background">
-                                {% if amount > 0 %}
-                                    {% set max_amount = monthly_spending.values()|max %}
-                                    <div class="bar"
-                                         style="width: {{ (amount / max_amount * 100)|round(1) }}%">
-                                    </div>
-                                {% endif %}
-                            </div>
-                        </div>
-                    {% endfor %}
-                </div>
+            {% if recent_transactions %}
+                <table style="width: 100%; border-collapse: collapse; text-align: left;">
+                    <thead>
+                        <tr style="border-bottom: 2px solid #e0e0e0;">
+                            <th style="padding: 12px;">Date</th>
+                            <th style="padding: 12px;">Category</th>
+                            <th style="padding: 12px;">Description</th>
+                            <th style="padding: 12px;">Payment Method</th>
+                            <th style="padding: 12px;">Account Type</th>
+                            <th style="padding: 12px;">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in recent_transactions %}
+                            <tr style="border-bottom: 1px solid #f0f0f0;">
+                                <td style="padding: 12px;">{{ item['Date'] }}</td>
+                                <td style="padding: 12px;">{{ item['Category'] }}</td>
+                                <td style="padding: 12px;">{{ item['Description'] }}</td>
+                                <td style="padding: 12px;">{{ item['Payment_Method'] }}</td>
+                                <td style="padding: 12px;">{{ item['Account_Type'] }}</td>
+                                <td style="padding: 12px; font-weight: bold;">₹{{ "%.2f"|format(item['Amount']|float) }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             {% else %}
-                <p>No monthly spending data is available yet.</p>
+                <p>No transactions recorded yet.</p>
             {% endif %}
         </section>
 
+        <!-- 3. Side-by-Side: Add Transaction & Manage Transactions -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px;">
+            
+            <!-- Left: Add New Transaction -->
+            <section class="panel" style="margin-bottom: 0; display: flex; flex-direction: column; justify-content: space-between; height: 100%; box-sizing: border-box;">
+                <div>
+                    <h2>Add New Transaction</h2>
+                    <p class="muted">Record a new expense manually.</p>
+                </div>
+                
+                <form action="{{ url_for('submit_transaction') }}" method="POST" style="display: flex; flex-direction: column; gap: 8px; margin-top: 15px;">
+                    <input type="date" name="date" required style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                    <select name="category" required style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                        <option value="" disabled selected>Select a Category</option>
+                        <option value="Food & Dining">Food & Dining</option>
+                        <option value="Groceries">Groceries</option>
+                        <option value="Transportation">Transportation</option>
+                        <option value="Utilities">Utilities</option>
+                        <option value="Shopping">Shopping</option>
+                        <option value="Entertainment">Entertainment</option>
+                        <option value="Healthcare">Healthcare</option>
+                        <option value="Housing">Housing</option>
+                        <option value="Education">Education</option>
+                        <option value="Other">Other</option>
+                    </select>                    
+                    <input type="text" name="description" placeholder="Description" required style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                    <input type="number" step="0.01" name="amount" placeholder="Amount (₹)" required style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                    
+                    <select name="payment_method" required style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                        <option value="" disabled selected>Payment Method</option>
+                        <option value="Cash">Cash</option>
+                        <option value="Credit Card">Credit Card</option>
+                        <option value="Debit Card">Debit Card</option>
+                        <option value="Bank Transfer">Bank Transfer</option>
+                    </select>
+                    
+                    <select name="account_type" required style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                        <option value="" disabled selected>Account Type</option>
+                        <option value="Checking">Checking</option>
+                        <option value="Rewards Visa">Rewards Visa</option>
+                        <option value="None">None</option>
+                    </select>
+                    
+                    <button type="submit" style="margin-top: 5px; height: 38px; background-color: #6558d9; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">Add Transaction</button>
+                </form>
+            </section>
+
+            <!-- Right: Manage Transactions -->
+            <section class="panel" style="margin-bottom: 0; display: flex; flex-direction: column; justify-content: space-between; height: 100%; box-sizing: border-box;">
+                <div>
+                    <h2>Manage Transactions</h2>
+                    <p class="muted">View your complete history, edit details, or delete incorrect expenses.</p>
+                </div>
+                
+                <div style="margin: 20px 0;">
+                    <p style="font-size: 0.95rem; line-height: 1.6; color: #555;">
+                        Need to review your full ledger, fix a typo, or remove an old entry? Open the Transaction Manager below to access your complete database history securely.
+                    </p>
+                </div>
+
+                <div>
+                    <a href="{{ url_for('view_all_transactions') }}" style="display: flex; align-items: center; justify-content: center; height: 38px; text-decoration: none; background-color: #6558d9; color: white; border-radius: 4px; font-weight: bold; font-size: 13px; box-sizing: border-box;">
+                        Open Transaction Manager &rarr;
+                    </a>
+                </div>
+            </section>
+
+        </div> <!-- GRID WRAPPER CLOSES HERE -->
+
+        <!-- 4. Monthly History Explorer -->
+        <section class="panel">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <div>
+                    <h2 style="margin-bottom: 4px;">Monthly Spending</h2>
+                    <p class="muted" style="margin: 0;">View your category breakdown by month.</p>
+                </div>
+                
+                <!-- Dropdown populated by your Pandas dictionary keys -->
+                <select id="monthSelector" onchange="updateMonthlyView()" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-weight: bold; background-color: #f8f9fa; cursor: pointer;">
+                    {% if monthly_history %}
+                        {% for month in monthly_history.keys() %}
+                            <option value="{{ month }}">{{ month }}</option>
+                        {% endfor %}
+                    {% else %}
+                        <option value="">No Data</option>
+                    {% endif %}
+                </select>
+            </div>
+
+            <!-- JavaScript will inject the category bars here -->
+            <div id="monthlyDataContainer"></div>
+        </section>
+
+        <script>
+            // Safely import the nested dictionary from Python into JavaScript
+            const monthlyData = {{ monthly_history | tojson | safe }};
+            
+            function updateMonthlyView() {
+                const selector = document.getElementById('monthSelector');
+                const container = document.getElementById('monthlyDataContainer');
+                
+                if (!monthlyData || Object.keys(monthlyData).length === 0) {
+                    container.innerHTML = '<p>No monthly spending data is available yet.</p>';
+                    return;
+                }
+
+                // Get current month in 'YYYY-MM' format to match your Pandas index
+                const date = new Date();
+                const currentMonth = date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0');
+                
+                // On initial load, try to select the current month
+                if (!selector.dataset.initialized) {
+                    if (monthlyData[currentMonth]) {
+                        selector.value = currentMonth;
+                    }
+                    selector.dataset.initialized = "true";
+                }
+
+                const selectedMonth = selector.value;
+                const data = monthlyData[selectedMonth];
+                
+                // If there is no data for the selected/current month
+                if (!data || Object.keys(data).length === 0) {
+                    container.innerHTML = '<p style="padding-top: 10px; color: #555;">No transactions recorded this month.</p>';
+                    return;
+                }
+                
+                // Calculate the total so we can size the percentage bars
+                const total = Object.values(data).reduce((sum, val) => sum + val, 0);
+                
+                // Build the HTML for the category rows
+                let html = '<div class="category-list">';
+                for (const [category, amount] of Object.entries(data)) {
+                    if (amount > 0) { // Only show categories with actual spending
+                        const percent = (amount / total * 100).toFixed(1);
+                        html += `
+                            <div class="category-row">
+                                <div class="category-info">
+                                    <span>${category}</span>
+                                    <strong>₹${amount.toFixed(2)}</strong>
+                                </div>
+                                <div class="bar-background">
+                                    <div class="bar" style="width: ${percent}%"></div>
+                                </div>
+                                <small>${percent}% of total</small>
+                            </div>
+                        `;
+                    }
+                }
+                html += '</div>';
+                container.innerHTML = html;
+            }
+
+            // Run the script instantly when the dashboard loads
+            document.addEventListener("DOMContentLoaded", updateMonthlyView);
+        </script>
+
+        <!-- 5. Spending Trends -->
         <section class="panel">
             <h2>Spending Trends</h2>
             <p class="muted">
@@ -139,8 +306,8 @@
                 <p>No spending trend data is available yet.</p>
             {% endif %}
         </section>
-        </section>
 
+        <!-- 6. AI Assistant -->
         <section class="panel">
             <h2>AI Financial Assistant</h2>
             <p class="muted">
@@ -169,55 +336,16 @@
                 <article class="feature">
                     <h3>Anomaly Detection</h3>
                     <p>Identify potentially unusual transactions using machine learning.</p>
-                    <p class="coming-soon">Backend integration pending</p>
+                    <form action="{{ url_for('view_anomalies') }}" method="GET">
+                        <button type="submit">Check Spending Anomalies</button>
+                    </form>
                 </article>
-
-                <section class="panel">
-
-            <h2>Add New Transaction</h2>
-            <p class="muted">Record a new expense manually.</p>
-            
-            <form action="{{ url_for('submit_transaction') }}" method="POST" style="display: flex; flex-direction: column; gap: 10px; max-width: 400px; margin-top: 15px;">
-                <input type="date" name="date" required>
-                <select name="category" required>
-                    <option value="" disabled selected>Select a Category</option>
-                    <option value="Food & Dining">Food & Dining</option>
-                    <option value="Groceries">Groceries</option>
-                    <option value="Transportation">Transportation</option>
-                    <option value="Utilities">Utilities</option>
-                    <option value="Shopping">Shopping</option>
-                    <option value="Entertainment">Entertainment</option>
-                    <option value="Healthcare">Healthcare</option>
-                    <option value="Housing">Housing</option>
-                    <option value="Education">Education</option>
-                    <option value="Other">Other</option>
-                </select>                    
-                <input type="text" name="description" placeholder="Description" required>
-                <input type="number" step="0.01" name="amount" placeholder="Amount (₹)" required>
-                
-                <select name="payment_method" required>
-                    <option value="" disabled selected>Payment Method</option>
-                    <option value="Cash">Cash</option>
-                    <option value="Credit Card">Credit Card</option>
-                    <option value="Debit Card">Debit Card</option>
-                    <option value="Bank Transfer">Bank Transfer</option>
-                </select>
-                
-                <select name="account_type" required>
-                    <option value="" disabled selected>Account Type</option>
-                    <option value="Checking">Checking</option>
-                    <option value="Rewards Visa">Rewards Visa</option>
-                    <option value="None">None</option>
-                </select>
-                
-                <button type="submit" style="margin-top: 10px;">Add Transaction</button>
-            </form>
-        </section>
 
                 <article class="feature">
                     <h3>Spending Prediction</h3>
                     <p>Estimate future spending using historical transaction data.</p>
-                    <p class="coming-soon">Backend integration pending</p>
+                    <form action="{{ url_for('view_prediction') }}" method="GET">
+                        <button type="submit">Predict Next Month</button>
                 </article>
             </div>
         </section>
@@ -228,6 +356,12 @@
         </footer>
 
     </main>
+    <script>
+        
+    document.querySelectorAll('input[type="date"]').forEach(input => {
+        input.max = new Date().toISOString().split("T")[0];
+    });
+</script>
 
 </body>
 </html>

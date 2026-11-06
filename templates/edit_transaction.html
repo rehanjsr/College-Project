@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Transaction | FinAssist</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header class="header">
+        <div>
+            <h1>FinAssist</h1>
+            <p>Edit Transaction Details</p>
+        </div>
+        <div style="display: flex; gap: 15px;">
+            <a href="{{ url_for('view_all_transactions') }}" style="color: #6558d9; text-decoration: none; font-weight: bold;">&larr; Cancel</a>
+        </div>
+    </header>
+
+    <main class="container">
+        <section class="panel" style="max-width: 500px; margin: 0 auto;">
+            <h2>Update Transaction</h2>
+            <form action="{{ url_for('submit_edit') }}" method="POST" style="display: flex; flex-direction: column; gap: 12px; margin-top: 15px;">
+                <!-- Hidden ID so the backend knows which row to update -->
+                <input type="hidden" name="transaction_id" value="{{ item['transaction_id'] }}">
+                
+                <label style="font-size: 0.9rem; font-weight: bold; color: #555;">Date</label>
+                <input type="date" name="date" value="{{ item['Date'] }}" required style="padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
+                
+                <label style="font-size: 0.9rem; font-weight: bold; color: #555;">Category</label>
+                <select name="category" required style="padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
+                    <option value="{{ item['Category'] }}" selected hidden>{{ item['Category'] }}</option>
+                    <option value="Food & Dining">Food & Dining</option>
+                    <option value="Groceries">Groceries</option>
+                    <option value="Transportation">Transportation</option>
+                    <option value="Utilities">Utilities</option>
+                    <option value="Shopping">Shopping</option>
+                    <option value="Entertainment">Entertainment</option>
+                    <option value="Healthcare">Healthcare</option>
+                    <option value="Housing">Housing</option>
+                    <option value="Education">Education</option>
+                    <option value="Other">Other</option>
+                </select>     
+                               
+                <label style="font-size: 0.9rem; font-weight: bold; color: #555;">Description</label>
+                <input type="text" name="description" value="{{ item['Description'] }}" required style="padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
+                
+                <label style="font-size: 0.9rem; font-weight: bold; color: #555;">Amount (₹)</label>
+                <input type="number" step="0.01" name="amount" value="{{ item['Amount'] }}" required style="padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
+                
+                <label style="font-size: 0.9rem; font-weight: bold; color: #555;">Payment Method</label>
+                <select name="payment_method" required style="padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
+                    <option value="{{ item['Payment_Method'] }}" selected hidden>{{ item['Payment_Method'] }}</option>
+                    <option value="Cash">Cash</option>
+                    <option value="Credit Card">Credit Card</option>
+                    <option value="Debit Card">Debit Card</option>
+                    <option value="Bank Transfer">Bank Transfer</option>
+                </select>
+                
+                <label style="font-size: 0.9rem; font-weight: bold; color: #555;">Account Type</label>
+                <select name="account_type" required style="padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
+                    <option value="{{ item['Account_Type'] }}" selected hidden>{{ item['Account_Type'] }}</option>
+                    <option value="Checking">Checking</option>
+                    <option value="Rewards Visa">Rewards Visa</option>
+                    <option value="None">None</option>
+                </select>
+                
+                <button type="submit" style="margin-top: 10px; padding: 12px; background-color: #6558d9; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">Save Changes</button>
+            </form>
+        </section>
+    </main>
+    <script>
+        // Locks all date pickers on the edit page to today or earlier
+        document.querySelectorAll('input[type="date"]').forEach(input => {
+            input.max = new Date().toISOString().split("T")[0];
+        });
+    </script>
+</body>
+</html>
+</body>
+</html>

@@ -72,6 +72,9 @@ def home():
     
     summary = Backend.expense_summary(data)
     monthly = Backend.monthly_spending(data)
+    history_data = Backend.monthly_history(data)
+    recent_transactions = Backend.get_recent_transactions(data, limit=10)
+    prediction_data = Backend.predict_spending(data)
 
     category_spending = {
         str(category): float(amount)
@@ -88,7 +91,10 @@ def home():
         total_spent=float(summary["total"]),
         average_transaction=float(summary["average_transaction"]),
         category_spending=category_spending,
-        monthly_spending=monthly_spending
+        monthly_spending=monthly_spending,
+        recent_transactions=recent_transactions,
+        monthly_history=history_data,
+        prediction_data=prediction_data
     )
 
 @app.route("/add_transaction", methods=["POST"])
@@ -138,6 +144,129 @@ def report(report_type):
             ), 500
 
     return "Please submit the report form from the dashboard.", 405
+
+
+@app.route("/anomalies")
+def view_anomalies():
+    if 'username' not in session:
+        return redirect(url_for('login'))
+        
+    data = Backend.load_user_data(session['username'])
+    
+    if not data.empty:
+        anomalies = Backend.anomaly_detection(data)
+    else:
+        anomalies = {}
+        
+    return render_template("anomalies.html", anomalies=anomalies)
+
+
+
+@app.route("/override_anomaly", methods=["POST"])
+def handle_anomaly_override():
+    if 'username' not in session:
+        return redirect(url_for('login'))
+        
+    trans_id = request.form.get("transaction_id")
+    user_choice = request.form.get("override")
+    
+    is_anomaly = True if user_choice == "true" else False
+    
+    details = {
+        "transaction_id": int(trans_id),
+        "override": is_anomaly,
+        "username": session['username']
+    }
+    
+    Backend.override_anomaly(details)
+    return redirect(url_for('view_anomalies'))
+
+
+@app.route("/transactions")
+def view_all_transactions():
+    if 'username' not in session:
+        return redirect(url_for('login'))
+        
+    data = Backend.load_user_data(session['username'])
+    
+    # Calling without limit=10 returns ALL transactions sorted by newest date
+    all_transactions = Backend.get_recent_transactions(data)
+    
+    return render_template("transactions.html", transactions=all_transactions)
+
+
+
+@app.route("/manage_action", methods=["POST"])
+def manage_action():
+    if 'username' not in session:
+        return redirect(url_for('login'))
+        
+    action = request.form.get('action')
+    trans_id = request.form.get('transaction_id')
+    
+    if not trans_id:
+        return redirect(url_for('view_all_transactions'))
+        
+    trans_id = int(trans_id)
+
+    if action == 'delete':
+        details = {
+            'transaction_id': trans_id,
+            'username': session['username']
+        }
+        Backend.delete_transaction(details)
+        return redirect(url_for('view_all_transactions'))
+        
+    elif action == 'edit':
+        data = Backend.load_user_data(session['username'])
+        # Find the specific row by its index (transaction_id)
+        if trans_id in data.index:
+            row = data.loc[trans_id]
+            # Package it up nicely for the HTML form
+            item = {
+                'transaction_id': trans_id,
+                'Date': row['Date'].strftime('%Y-%m-%d'),
+                'Category': row['Category'],
+                'Description': row['Description'],
+                'Amount': row['Amount'],
+                'Payment_Method': row['Payment_Method'],
+                'Account_Type': row['Account_Type']
+            }
+            return render_template("edit_transaction.html", item=item)
+            
+        return redirect(url_for('view_all_transactions'))
+
+    
+
+@app.route("/submit_edit", methods=["POST"])
+def submit_edit():
+    if 'username' not in session:
+        return redirect(url_for('login'))
+        
+    details = {
+        "transaction_id": int(request.form.get("transaction_id")),
+        "date": request.form.get("date"),
+        "category": request.form.get("category"),
+        "description": request.form.get("description"),
+        "amount": float(request.form.get("amount")),
+        "payment_method": request.form.get("payment_method"),
+        "account_type": request.form.get("account_type"),
+        "username": session['username']
+    }
+    
+    Backend.update_transaction(details)
+    return redirect(url_for('view_all_transactions'))
+
+
+@app.route("/prediction", methods=["GET"])
+def view_prediction():
+    if 'username' not in session:
+        return redirect(url_for('login'))
+        
+    data = Backend.load_user_data(session['username'])
+    prediction_data = Backend.predict_spending(data)
+    
+    return render_template("prediction.html", prediction_data=prediction_data)
 
 
 

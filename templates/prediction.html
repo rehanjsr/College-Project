@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spending Prediction | FinAssist</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+    <header class="header">
+        <div>
+            <h1>FinAssist</h1>
+            <p>AI Spending Forecast</p>
+        </div>
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <a href="{{ url_for('home') }}" style="color: #6558d9; text-decoration: none; font-weight: bold;">&larr; Back to Dashboard</a>
+        </div>
+    </header>
+
+    <main class="container">
+        <section class="panel">
+            <h2>Next Month Spending Forecast</h2>
+            <p class="muted">Linear regression trend analysis based on your monthly spending history.</p>
+
+            {% if prediction_data %}
+                <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: center; margin-top: 20px;">
+                    
+                    <!-- Left: Estimated Amount Box -->
+                    <div style="flex: 1; min-width: 240px; background-color: #f8f9fa; padding: 24px; border-radius: 8px; border-left: 5px solid #6558d9;">
+                        <span style="font-size: 0.9rem; color: #666; font-weight: bold; text-transform: uppercase;">Estimated Next Month Total</span>
+                        <div style="font-size: 2.2rem; font-weight: bold; color: #6558d9; margin-top: 10px;">
+                            ₹{{ "%.2f"|format(prediction_data['Prediction']) }}
+                        </div>
+                        <p style="font-size: 0.85rem; color: #777; margin-top: 10px; margin-bottom: 0;">
+                            Projected using Ordinary Least Squares (OLS) Linear Regression across your past monthly totals.
+                        </p>
+                    </div>
+
+                    <!-- Right: The Matplotlib Scatter & Trendline Plot -->
+                    <div style="flex: 2; min-width: 320px; text-align: center;">
+                        <img src="data:image/png;base64,{{ prediction_data['Graph'] }}" 
+                             alt="Spending Forecast Graph" 
+                             style="max-width: 100%; height: auto; border-radius: 6px; border: 1px solid #e0e0e0;">
+                    </div>
+
+                </div>
+            {% else %}
+                <div style="margin-top: 20px; padding: 20px; background-color: #f8f9fa; border-radius: 6px; border: 1px solid #e0e0e0; color: #555;">
+                    <strong>Not enough historical data yet.</strong> 
+                    <p style="margin: 8px 0 0 0; font-size: 0.95rem;">
+                        You need transactions across more than 3 months for the regression model to establish a reliable spending trendline.
+                    </p>
+                </div>
+            {% endif %}
+        </section>
+    </main>
+
+</body>
+</html>

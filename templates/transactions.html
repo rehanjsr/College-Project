@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transaction Manager | FinAssist</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+    <header class="header">
+        <div>
+            <h1>FinAssist</h1>
+            <p>Transaction Manager</p>
+        </div>
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <a href="{{ url_for('home') }}" style="color: #6558d9; text-decoration: none; font-weight: bold;">&larr; Back to Dashboard</a>
+        </div>
+    </header>
+
+    <main class="container">
+        <section class="panel">
+            <h2>Manage Transactions</h2>
+            <p class="muted">Select a transaction below, then choose an action.</p>
+
+            {% if transactions %}
+                <form action="{{ url_for('manage_action') }}" method="POST">
+                    
+                    <!-- Top Action Buttons & Month Dropdown -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px; margin-bottom: 20px; padding: 15px; background-color: #f8f9fa; border-radius: 6px; border: 1px solid #e0e0e0;">
+                        
+                        <div style="display: flex; gap: 10px;">
+                            <button type="submit" name="action" value="edit" style="padding: 10px 20px; background-color: #6558d9; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">
+                                &#9998; Edit Selected
+                            </button>
+                            <button type="submit" name="action" value="delete" onclick="return confirm('Are you sure you want to permanently delete this transaction?');" style="padding: 10px 20px; background-color: #d9534f; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">
+                                &#128465; Delete Selected
+                            </button>
+                        </div>
+
+                        <!-- The Dropdown -->
+                        <div>
+                            <label for="tableMonthSelector" style="font-weight: bold; margin-right: 8px; color: #555;">Filter Month:</label>
+                            <select id="tableMonthSelector" onchange="filterTable()" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-weight: bold; cursor: pointer;">
+                                <option value="all">All Time</option>
+                                <!-- JS injects options here -->
+                            </select>
+                        </div>
+
+                    </div>
+
+                    <table style="width: 100%; border-collapse: collapse; text-align: left;">
+                        <thead>
+                            <tr style="border-bottom: 2px solid #e0e0e0;">
+                                <th style="padding: 12px; width: 40px;">Select</th>
+                                <th style="padding: 12px;">Date</th>
+                                <th style="padding: 12px;">Category</th>
+                                <th style="padding: 12px;">Description</th>
+                                <th style="padding: 12px;">Payment Method</th>
+                                <th style="padding: 12px;">Account Type</th>
+                                <th style="padding: 12px;">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody id="transactionBody">
+                            {% for item in transactions %}
+                                <!-- Notice the data-month attribute injected by your Python code! -->
+                                <tr class="tx-row" data-month="{{ item['Month_Str'] }}" style="border-bottom: 1px solid #f0f0f0;">
+                                    <td style="padding: 12px; text-align: center;">
+                                        <input type="radio" name="transaction_id" value="{{ item['transaction_id'] }}" required style="cursor: pointer;">
+                                    </td>
+                                    <td style="padding: 12px;">{{ item['Date'] }}</td>
+                                    <td style="padding: 12px;">{{ item['Category'] }}</td>
+                                    <td style="padding: 12px;">{{ item['Description'] }}</td>
+                                    <td style="padding: 12px;">{{ item['Payment_Method'] }}</td>
+                                    <td style="padding: 12px;">{{ item['Account_Type'] }}</td>
+                                    <td style="padding: 12px; font-weight: bold;">₹{{ "%.2f"|format(item['Amount']|float) }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    <!-- Message if a month has no transactions -->
+                    <p id="noResultsMsg" style="display: none; padding: 20px; text-align: center; color: #777;">No transactions found for this month.</p>
+                </form>
+            {% else %}
+                <p style="margin-top: 20px;">No transactions found.</p>
+            {% endif %}
+        </section>
+    </main>
+
+    <script>
+        function initializeTableFilter() {
+            const rows = document.querySelectorAll('.tx-row');
+            if (rows.length === 0) return;
+
+            const selector = document.getElementById('tableMonthSelector');
+            const uniqueMonths = new Set();
+
+            // 1. Gather all unique months from the table rows
+            rows.forEach(row => {
+                if (row.dataset.month) {
+                    uniqueMonths.add(row.dataset.month);
+                }
+            });
+
+            // 2. Sort months newest to oldest and add to dropdown
+            const sortedMonths = Array.from(uniqueMonths).sort().reverse();
+            sortedMonths.forEach(month => {
+                const option = document.createElement('option');
+                option.value = month;
+                option.textContent = month;
+                selector.appendChild(option);
+            });
+
+            // 3. Auto-select the current month if it exists
+            const date = new Date();
+            const currentMonth = date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0');
+            
+            if (uniqueMonths.has(currentMonth)) {
+                selector.value = currentMonth;
+            }
+
+            // 4. Run the filter to hide/show rows
+            filterTable();
+        }
+
+        function filterTable() {
+            const selectedMonth = document.getElementById('tableMonthSelector').value;
+            const rows = document.querySelectorAll('.tx-row');
+            let visibleCount = 0;
+
+            rows.forEach(row => {
+                // Show if "All Time" is selected, or if the row's month matches the dropdown
+                if (selectedMonth === 'all' || row.dataset.month === selectedMonth) {
+                    row.style.display = '';
+                    visibleCount++;
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+
+            // Show a friendly message if the table is empty for that month
+            const noResultsMsg = document.getElementById('noResultsMsg');
+            if (visibleCount === 0) {
+                noResultsMsg.style.display = 'block';
+            } else {
+                noResultsMsg.style.display = 'none';
+            }
+        }
+
+        // Run when the page loads
+        document.addEventListener('DOMContentLoaded', initializeTableFilter);
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anomaly Detection | FinAssist</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+    <header class="header">
+        <div>
+            <h1>FinAssist</h1>
+            <p>Unusual Spending & Anomaly Detection</p>
+        </div>
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <a href="{{ url_for('home') }}" style="color: #6558d9; text-decoration: none; font-weight: bold;">&larr; Back to Dashboard</a>
+        </div>
+    </header>
+
+    <main class="container">
+        <section class="panel">
+            <h2>Flagged Transactions</h2>
+            <p class="muted">
+                Our AI model flagged these transactions as unusually high for their category. 
+                Is this an actual anomaly, or normal spending?
+            </p>
+
+            {% if anomalies %}
+                <table style="width: 100%; border-collapse: collapse; margin-top: 20px; text-align: left;">
+                    <thead>
+                        <tr style="border-bottom: 2px solid #e0e0e0;">
+                            <th style="padding: 12px;">Date</th>
+                            <th style="padding: 12px;">Category</th>
+                            <th style="padding: 12px;">Description</th>
+                            <th style="padding: 12px;">Amount</th>
+                            <th style="padding: 12px;">Is this an anomaly?</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for trans_id, details in anomalies.items() %}
+                            <tr style="border-bottom: 1px solid #f0f0f0;">
+                                <td style="padding: 12px;">{{ details['Date'] }}</td>
+                                <td style="padding: 12px;">{{ details['Category'] }}</td>
+                                <td style="padding: 12px;">{{ details['Description'] }}</td>
+                                <td style="padding: 12px; font-weight: bold; color: #d9534f;">₹{{ "%.2f"|format(details['Amount']|float) }}</td>
+                                <td style="padding: 12px;">
+                                    <form action="{{ url_for('handle_anomaly_override') }}" method="POST" style="display: flex; gap: 8px;">
+                                        <input type="hidden" name="transaction_id" value="{{ trans_id }}">
+                                        <button type="submit" name="override" value="true" style="background-color: #d9534f; padding: 6px 12px; font-size: 0.9rem;">Yes (Keep Flagged)</button>
+                                        <button type="submit" name="override" value="false" style="background-color: #5cb85c; padding: 6px 12px; font-size: 0.9rem;">No (Dismiss)</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p style="margin-top: 20px;">No unusual transactions detected right now! (Note: A category needs at least 5 transactions before anomaly detection activates.)</p>
+            {% endif %}
+        </section>
+    </main>
+
+</body>
+</html>
