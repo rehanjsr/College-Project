@@ -567,6 +567,8 @@ def predict_spending(data):
     df = df.set_index("Date")
 
     monthly_totals = df.resample("MS")["Amount"].sum()
+    current_month_start = pd.Timestamp(date.today().replace(day=1))
+    monthly_totals = monthly_totals[monthly_totals.index < current_month_start]
     y = monthly_totals.values
     
     if len(y) > 3:
