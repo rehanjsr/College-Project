@@ -188,14 +188,41 @@ def expense_trend(data):
 
 
 def expense_summary(data):
-    total_spent = data['Amount'].sum()
-    categorical_spending = data.groupby('Category')['Amount'].sum()
-    average_transaction = data['Amount'].mean()
-
+    if data.empty:
+        return {
+            "total": 0.0,
+            "average_transaction": 0.0,
+            "category": {},
+            "total_ever": 0.0,
+            "highest_category": "None",
+            "top_8_categories": {},
+            "monthly_stats": {}
+        }
+        
+    df = data.copy(deep=True)
+    df['Month_Str'] = df['Date'].dt.strftime('%Y-%m')
+    
+    total_spent = df['Amount'].sum()
+    average_transaction = df['Amount'].mean()
+    category_spending = df.groupby('Category')['Amount'].sum().to_dict()
+    
+    category_totals = df.groupby('Category')['Amount'].sum()
+    highest_category = category_totals.idxmax() if not category_totals.empty else "None"
+    top_8_categories = category_totals.sort_values(ascending=False).head(8).to_dict()
+    
+    monthly_stats = df.groupby('Month_Str').agg(
+        month_total=('Amount', 'sum'),
+        month_avg=('Amount', 'mean')
+    ).to_dict(orient='index')
+    
     return {
         "total": total_spent,
         "average_transaction": average_transaction,
-        "category": categorical_spending
+        "category": category_spending,
+        "total_ever": total_spent,
+        "highest_category": highest_category,
+        "top_8_categories": top_8_categories,
+        "monthly_stats": monthly_stats
     }
 
 
@@ -508,15 +535,13 @@ def get_recent_transactions(data, limit=None):
 
 
 def delete_transaction(details):
-    tx_date = datetime.strptime(details['date'], '%Y-%m-%d').date()
-    if tx_date > date.today():
-        return False
-
     try:
         conn = pg.connect(**database_credentials)
         cursor = conn.cursor()
-        query = 'delete from transactions where username = %(username)s and transaction_id = %(transaction_id)s'
-        cursor.execute(query,details)
+        
+        query = 'DELETE FROM transactions WHERE username = %(username)s AND transaction_id = %(transaction_id)s'
+        cursor.execute(query, details)
+        
         conn.commit()
         cursor.close()
         conn.close()
@@ -524,8 +549,6 @@ def delete_transaction(details):
 
     except Exception as error:
         print("Error: ", error)
-        cursor.close()
-        conn.close()
         return False
 
 

@@ -75,27 +75,30 @@ def home():
     history_data = Backend.monthly_history(data)
     recent_transactions = Backend.get_recent_transactions(data, limit=10)
     prediction_data = Backend.predict_spending(data)
-
+    category_data = summary.get("category", summary.get("top_8_categories", {}))
     category_spending = {
         str(category): float(amount)
-        for category, amount in summary["category"].items()
+        for category, amount in category_data.items()
     }
 
     monthly_spending = {
         str(month): float(amount)
-        for month, amount in monthly["total_monthly"].items()
+        for month, amount in monthly.get("total_monthly", {}).items()
     }
 
     return render_template(
         "index.html",
-        total_spent=float(summary["total"]),
-        average_transaction=float(summary["average_transaction"]),
+        summary_data=summary,  
+        total_spent=float(summary.get("total", summary.get("total_ever", 0))),
+        average_transaction=float(summary.get("average_transaction", 0)),
         category_spending=category_spending,
         monthly_spending=monthly_spending,
         recent_transactions=recent_transactions,
         monthly_history=history_data,
         prediction_data=prediction_data
     )
+
+
 
 @app.route("/add_transaction", methods=["POST"])
 def submit_transaction():
@@ -111,7 +114,7 @@ def submit_transaction():
 def report(report_type):
     if request.method == "POST":
         try:
-            data = Backend.load_user_data('0')
+            data = Backend.load_user_data(session['username'])
             
             if report_type == "summary":
                 raw_result = Backend.ai_financial_summary(data)

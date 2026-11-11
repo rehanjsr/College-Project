@@ -27,22 +27,90 @@
             <p>Explore your transactions and get insights powered by AI.</p>
         </section>
 
-        <section class="stats">
-            <article class="card">
-                <p class="label">Total Spending</p>
-                <h2>₹{{ "%.2f"|format(total_spent) }}</h2>
-            </article>
 
-            <article class="card">
-                <p class="label">Average Transaction</p>
-                <h2>₹{{ "%.2f"|format(average_transaction) }}</h2>
-            </article>
+        
+<!-- Summary Metrics Panel -->
+        <section class="panel">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <div>
+                    <h2 style="margin-bottom: 4px;">Financial Summary</h2>
+                    <p class="muted" style="margin: 0;">Overview of your monthly and all-time spending.</p>
+                </div>
+                
+                <!-- Month Dropdown -->
+                <div>
+                    <label for="summaryMonthSelector" style="font-weight: bold; margin-right: 8px; color: #555;">View Month:</label>
+                    <select id="summaryMonthSelector" onchange="updateSummaryCards()" style="padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; font-weight: bold; background-color: #f8f9fa; cursor: pointer; color: #333;">
+                        {% if summary_data and summary_data.monthly_stats %}
+                            {% for month in summary_data.monthly_stats.keys()|sort(reverse=True) %}
+                                <option value="{{ month }}">{{ month }}</option>
+                            {% endfor %}
+                        {% endif %}
+                    </select>
+                </div>
+            </div>
 
-            <article class="card">
-                <p class="label">Spending Categories</p>
-                <h2>{{ category_spending|length }}</h2>
-            </article>
+            <!-- The 4 Cards (Forced into one row using flex: 1 and a smaller min-width) -->
+            <div style="display: flex; flex-wrap: wrap; gap: 15px;">
+                
+                <!-- Dynamic: Total Spent -->
+                <div style="flex: 1; min-width: 140px; background-color: #f8f9fa; padding: 16px; border-radius: 6px; border: 1px solid #eee; border-left: 4px solid #6558d9;">
+                    <p style="font-size: 0.75rem; color: #666; font-weight: bold; text-transform: uppercase; margin: 0 0 6px 0;">Total Spent</p>
+                    <h2 id="monthTotalDisplay" style="font-size: 1.5rem; font-weight: bold; color: #333; margin: 0;">₹0.00</h2>
+                </div>
+
+                <!-- Dynamic: Average Transaction -->
+                <div style="flex: 1; min-width: 140px; background-color: #f8f9fa; padding: 16px; border-radius: 6px; border: 1px solid #eee; border-left: 4px solid #6558d9;">
+                    <p style="font-size: 0.75rem; color: #666; font-weight: bold; text-transform: uppercase; margin: 0 0 6px 0;">Average Transaction</p>
+                    <h2 id="monthAvgDisplay" style="font-size: 1.5rem; font-weight: bold; color: #333; margin: 0;">₹0.00</h2>
+                </div>
+
+                <!-- Static: Total Spent Ever -->
+                <div style="flex: 1; min-width: 140px; background-color: #f8f9fa; padding: 16px; border-radius: 6px; border: 1px solid #eee; border-left: 4px solid #6558d9;">
+                    <p style="font-size: 0.75rem; color: #666; font-weight: bold; text-transform: uppercase; margin: 0 0 6px 0;">Total Spent Ever</p>
+                    <h2 style="font-size: 1.5rem; font-weight: bold; color: #333; margin: 0;">₹{{ "%.2f"|format(summary_data.total_ever) }}</h2>
+                </div>
+
+                <!-- Static: Highest Category -->
+                <div style="flex: 1; min-width: 140px; background-color: #f8f9fa; padding: 16px; border-radius: 6px; border: 1px solid #eee; border-left: 4px solid #6558d9;">
+                    <p style="font-size: 0.75rem; color: #666; font-weight: bold; text-transform: uppercase; margin: 0 0 6px 0;">Highest Category</p>
+                    <h2 style="font-size: 1.5rem; font-weight: bold; color: #333; margin: 0;">{{ summary_data.highest_category }}</h2>
+                </div>
+            </div>
         </section>
+
+        <!-- JavaScript to power the dynamic numbers without changing text labels -->
+        <script>
+            const monthlyStats = {{ summary_data.monthly_stats | tojson | safe if summary_data else '{}' }};
+            
+            function updateSummaryCards() {
+                const selector = document.getElementById('summaryMonthSelector');
+                if (!selector || Object.keys(monthlyStats).length === 0) return;
+                
+                // Auto-select current real-world month on initial load
+                const date = new Date();
+                const currentMonth = date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0');
+                
+                if (!selector.dataset.initialized) {
+                    if (monthlyStats[currentMonth]) {
+                        selector.value = currentMonth;
+                    }
+                    selector.dataset.initialized = "true";
+                }
+                
+                const stats = monthlyStats[selector.value];
+                
+                if (stats) {
+                    // Updates the numbers directly inside the <h2> tags
+                    document.getElementById('monthTotalDisplay').innerText = '₹' + stats.month_total.toFixed(2);
+                    document.getElementById('monthAvgDisplay').innerText = '₹' + stats.month_avg.toFixed(2);
+                }
+            }
+
+            document.addEventListener('DOMContentLoaded', updateSummaryCards);
+        </script>
+
+
 
         <!-- 1. Spending by Category -->
         <section class="panel">
@@ -237,11 +305,9 @@
                     return;
                 }
 
-                // Get current month in 'YYYY-MM' format to match your Pandas index
                 const date = new Date();
                 const currentMonth = date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0');
                 
-                // On initial load, try to select the current month
                 if (!selector.dataset.initialized) {
                     if (monthlyData[currentMonth]) {
                         selector.value = currentMonth;
@@ -346,6 +412,7 @@
                     <p>Estimate future spending using historical transaction data.</p>
                     <form action="{{ url_for('view_prediction') }}" method="GET">
                         <button type="submit">Predict Next Month</button>
+                    </form>
                 </article>
             </div>
         </section>
